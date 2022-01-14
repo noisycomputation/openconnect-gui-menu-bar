@@ -1,6 +1,12 @@
 #!/bin/bash
 # Credit for original concept and initial work to: Jesse Jarzynka
 
+# Updated by: rallyemax (2022-01-14)
+#   * replaced 2FA section with generic openconnect prompt response mechanism
+#   * create .gitignored and add config.gitignored so configuration changes aren't tracked by git
+#   * override configuration variables from config.gitignored so that the project can be
+#     updated via fetch and pull without creating conflicts on configuration values.
+
 # Updated by: Ventz Petkov (8-31-18)
 #   * merged feature for token/pin input (ex: Duo/Yubikey/Google Authenticator) contributed by Harry Hoffman <hhoffman@ip-solutions.net>
 #   * added option to pick "push/sms/phone" (ex: Duo) vs token/pin (Yubikey/Google Authenticator/Duo)
@@ -25,88 +31,73 @@
 # <bitbar.image></bitbar.image>
 
 #########################################################
-# USER CHANGES #
+# INSTRUCTIONS #
 #########################################################
 
-# 1.) Updated your sudo config with (edit "osx-username" with your username):
-#osx-username ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect
-#osx-username ALL=(ALL) NOPASSWD: /usr/bin/killall -2 openconnect
+# 1.) Create file `/etc/sudoers.d/openconnect` with the following lines, replacing
+#     `macos-username` with your Mac username. Choose only ONE of the two `openconnect`
+#     binaries in the first line: the first one is for Intel Macs, the second for Apple Silicon.
+#macos-username ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect OR /opt/homebrew/openconnect
+#macos-username ALL=(ALL) NOPASSWD: /usr/bin/killall -2 openconnect
 
-
-# 2.) Make sure openconnect binary is located here:
-#     (If you don't have it installed: "brew install openconnect")
-VPN_EXECUTABLE=/usr/local/bin/openconnect
-
-
-# 3.) Update your AnyConnect VPN host
-VPN_HOST="vpn.domain.tld"
-
-# 4.) Update your AnyConnect username + tunnel
-VPN_USERNAME="vpn_username@domain.tld#VPN_TUNNEL_OPTIONALLY"
-
-# 5.) Push 2FA (ex: Duo), or Pin/Token (ex: Yubikey, Google Authenticator, TOTP)
-PUSH_OR_PIN="push"
-#PUSH_OR_PIN="Yubikey"
-# ---
-# * For Push (and other Duo specifics), options include:
-# "push", "sms", or "phone"
-# ---
-# * For Yubikey/Google Authenticator/other TOTP, specify any name for prompt:
-# "any-name-of-product-to-be-prompted-about"
-# PUSH_OR_PIN="Yubikey" | PUSH_OR_PIN="Google Authenticator" | PUSH_OR_PIN="Duo"
-# (essentially, anything _other_ than the "push", "sms", or "phone" options)
-# ---
-
-# 6.) Create an encrypted password entry in your OS X Keychain:
+# 2.) Create an encrypted password entry in your OS X Keychain:
 #      a.) Open "Keychain Access" and 
 #      b.) Click on "login" keychain (top left corner)
 #      c.) Click on "Passwords" category (bottom left corner)
 #      d.) From the "File" menu, select -> "New Password Item..."
-#      e.) For "Keychain Item Name" and "Account Name" use the value for "VPN_HOST" and "VPN_USERNAME" respectively
+#      e.) For "Keychain Item Name" and "Account Name" use the value for
+#          "VPN_HOST" and "VPN_USERNAME" respectively
 #      f.) For "Password" enter your VPN AnyConnect password.
 
-# This will retrieve that password securely at run time when you connect, and feed it to openconnect
-# No storing passwords unenin plain text files! :)
-GET_VPN_PASSWORD="security find-generic-password -wl $VPN_HOST"
+# 3.) Openconnect query responses
+#       This is rather crude, but any queries made by openconnect (which would normally
+#       require user input) are handled by piping in a newline-terminated string that
+#       responds to these queries. Examples:
+#         - an organization uses a self-signed certificate, so the user is required to
+#           either accept it with "yes" or reject it before being prompted for the
+#           password. No 2FA or tokens are required by the VPN server. In this case,
+#           the value might only be "yes".
+#         - if the organization uses 2FA, this value might be "push" (e.g. Duo) or
+#           "pin" (Yubikey, Google Authenticator, TOTP)
+#       Whatever prompt responses are required to be entered when using openconnect
+#       manually should be defined in the variable PROMPT_RESPONSES below, with each
+#       response followed by \n:
+#         - PROMPT_RESPONSES="yes\n"
+#         - PROMPT_RESPONSES="yes\npush\n"
 
+# 4.) Override the following configuration variables, as needed, in file `config.gitignored`.
+#     This file is listed in `.gitignored` (thus the extension), which means it will not be
+#     tracked by `git`. This allows the script to be updated using `git fetch && git pull`
+#     without creating conflicts, and if you publicly fork the project, keeps your personal
+#     information (like URL and username) off the public git repo.
+VPN_EXECUTABLE=/usr/local/bin/openconnect
+VPN_HOST="none.example.invalid"
+VPN_USERNAME="anonymous"
+PROMPT_RESPONSES=""
+VPN_INTERFACE="utun99"
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-# END-OF-USER-SETTINGS #
+# END OF INSTRUCTIONS #
 #########################################################
 
-VPN_INTERFACE="utun99"
+# Override the variables above
+[ -f './config.gitignored' ] && source ./config.gitignored
+
+# Retrieve that password securely at run time when connecting
+# and feed it to openconnect. No storing passwords in the clear!
+GET_VPN_PASSWORD="security find-generic-password -wl $VPN_HOST"
 
 # Command to determine if VPN is connected or disconnected
 VPN_CONNECTED="/sbin/ifconfig | grep -A3 $VPN_INTERFACE | grep inet"
 # Command to run to disconnect VPN
 VPN_DISCONNECT_CMD="sudo killall -2 openconnect"
 
-# GUI Prompt for your token/key (ex: Duo/Yubikey/Google Authenticator)
-function prompt_2fa_method() {		
-	if [ "$1" == "push" ]; then
-		echo "push"
-	elif [ "$1" == "sms" ]; then
-		echo "sms"
-	elif [ "$1" == "phone" ]; then
-		echo "phone"
-	else
-		osascript <<EOF
-		tell app "System Events"
-			text returned of (display dialog "Enter $1 token:" with hidden answer default answer "" buttons {"OK"} default button 1 with title "$(basename $0)")
-		end tell
-EOF
-	fi
-}
-
-
 case "$1" in
     connect)
         VPN_PASSWORD=$(eval "$GET_VPN_PASSWORD")
-        # VPN connection command, should eventually result in $VPN_CONNECTED,
-        # may need to be modified for VPN clients other than openconnect
 
         # Connect based on your 2FA selection (see: $PUSH_OR_PIN for options)
         # For anything else (non-duo) - you would provide your token (see: stoken)
-        echo -e "${VPN_PASSWORD}\n$(prompt_2fa_method ${PUSH_OR_PIN})\n" | sudo "$VPN_EXECUTABLE" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "$VPN_HOST" &> /dev/null &
+        echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "$VPN_HOST" &> /dev/null &
 
         # Wait for connection so menu item refreshes instantly
         until eval "$VPN_CONNECTED"; do sleep 1; done
