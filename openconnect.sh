@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Credit for original concept and initial work to: Jesse Jarzynka
 
 # Updated by: rallyemax (2022-01-14)
@@ -23,12 +23,12 @@
 #   * added ability to work with "Duo" 2-factor auth
 #   * changed icons
 
-# <bitbar.title>VPN Status</bitbar.title>
-# <bitbar.version>v1.1</bitbar.version>
-# <bitbar.author>Ventz Petkov</bitbar.author>
-# <bitbar.author.github>ventz</bitbar.author.github>
-# <bitbar.desc>Connect/Disconnect OpenConnect + show status</bitbar.desc>
-# <bitbar.image></bitbar.image>
+# <xbar.title>VPN Status</xbar.title>
+# <xbar.version>v1.1</xbar.version>
+# <xbar.author>Ventz Petkov</xbar.author>
+# <xbar.author.github>ventz</xbar.author.github>
+# <xbar.desc>Connect/Disconnect OpenConnect + show status</xbar.desc>
+# <xbar.image></xbar.image>
 
 #########################################################
 # INSTRUCTIONS #
@@ -73,14 +73,20 @@
 VPN_EXECUTABLE=/usr/local/bin/openconnect
 VPN_HOST="none.example.invalid"
 VPN_USERNAME="anonymous"
+VPN_DISPLAYNAME="VPN"
 PROMPT_RESPONSES=""
 VPN_INTERFACE="utun99"
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # END OF INSTRUCTIONS #
 #########################################################
 
+# Set absolute path to script (pedantic but works)
+PLUGINS_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+SCRIPT_PATH="$PLUGINS_DIR/$0"
+
 # Override the variables above
-[ -f './config.gitignored' ] && source ./config.gitignored
+CONFIG_FILE="$PLUGINS_DIR/openconnect-gui-menu-bar/config.gitignored"
+[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
 # Retrieve that password securely at run time when connecting
 # and feed it to openconnect. No storing passwords in the clear!
@@ -94,7 +100,6 @@ VPN_DISCONNECT_CMD="sudo killall -2 openconnect"
 case "$1" in
     connect)
         VPN_PASSWORD=$(eval "$GET_VPN_PASSWORD")
-
         # Connect based on your 2FA selection (see: $PUSH_OR_PIN for options)
         # For anything else (non-duo) - you would provide your token (see: stoken)
         echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "$VPN_HOST" &> /dev/null &
@@ -109,19 +114,18 @@ case "$1" in
         ;;
 esac
 
-
 if [ -n "$(eval "$VPN_CONNECTED")" ]; then
-    echo "VPN 🔒"
+    echo "$VPN_DISPLAYNAME 🔒"
     echo '---'
-    echo "Disconnect VPN | bash='$0' param1=disconnect terminal=false refresh=true"
+    echo "Disconnect VPN | bash='$SCRIPT_PATH' param1=disconnect terminal=false refresh=true"
     exit
 else
-    echo "VPN ❌"
+    echo "$VPN_DISPLAYNAME ❌"
     # Alternative icon -> but too similar to "connected"
     #echo "VPN 🔓"
     echo '---'
-    echo "Connect VPN | bash='$0' param1=connect terminal=false refresh=true"
+    echo "Connect VPN | bash='$SCRIPT_PATH' param1=connect terminal=false refresh=true"
     # For debugging!
-    #echo "Connect VPN | bash='$0' param1=connect terminal=true refresh=true"
+    #echo "Connect VPN | bash='$SCRIPT_PATH' param1=connect terminal=true refresh=true"
     exit
 fi
