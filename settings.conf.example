@@ -1,0 +1,16 @@
+# Mandatory: Uncomment one of the following two lines, depending on whether you have an
+#            Intel or Apple Silicon Mac
+#VPN_EXECUTABLE=/opt/homebrew/bin/openconnect  # Intel Macs
+#VPN_EXECUTABLE=/usr/local/bin/openconnect  # Apple Silicon Macs
+
+# Mandatory: Enter the URL or IP address of your VPN server, your username, and
+#            (optionally) provide pre-password prompt responses (see README.md)
+VPN_HOST="vpn.example.invalid"
+VPN_USERNAME="anonymous"
+PROMPT_RESPONSES=""
+
+# Optional: change the title displayed in the menu bar.
+VPN_DISPLAYNAME="VPN"
+
+# Optional: change the default interface name.
+VPN_INTERFACE="utun99"

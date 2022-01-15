@@ -3,8 +3,9 @@
 
 # Updated by: rallyemax (2022-01-14)
 #   * replaced 2FA section with generic openconnect prompt response mechanism
-#   * create .gitignored and add config.gitignored so configuration changes aren't tracked by git
-#   * override configuration variables from config.gitignored so that the project can be
+#   * create settings.conf.example and add settings.conf to .gitignored
+#   * so configuration changes aren't tracked by git
+#   * override configuration variables from settings.conf so that the project can be
 #     updated via fetch and pull without creating conflicts on configuration values.
 
 # Updated by: Ventz Petkov (8-31-18)
@@ -30,62 +31,20 @@
 # <xbar.desc>Connect/Disconnect OpenConnect + show status</xbar.desc>
 # <xbar.image></xbar.image>
 
-#########################################################
-# INSTRUCTIONS #
-#########################################################
-
-# 1.) Create file `/etc/sudoers.d/openconnect` with the following lines, replacing
-#     `macos-username` with your Mac username. Choose only ONE of the two `openconnect`
-#     binaries in the first line: the first one is for Intel Macs, the second for Apple Silicon.
-#macos-username ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect OR /opt/homebrew/openconnect
-#macos-username ALL=(ALL) NOPASSWD: /usr/bin/killall -2 openconnect
-
-# 2.) Create an encrypted password entry in your OS X Keychain:
-#      a.) Open "Keychain Access" and 
-#      b.) Click on "login" keychain (top left corner)
-#      c.) Click on "Passwords" category (bottom left corner)
-#      d.) From the "File" menu, select -> "New Password Item..."
-#      e.) For "Keychain Item Name" and "Account Name" use the value for
-#          "VPN_HOST" and "VPN_USERNAME" respectively
-#      f.) For "Password" enter your VPN AnyConnect password.
-
-# 3.) Openconnect query responses
-#       This is rather crude, but any queries made by openconnect (which would normally
-#       require user input) are handled by piping in a newline-terminated string that
-#       responds to these queries. Examples:
-#         - an organization uses a self-signed certificate, so the user is required to
-#           either accept it with "yes" or reject it before being prompted for the
-#           password. No 2FA or tokens are required by the VPN server. In this case,
-#           the value might only be "yes".
-#         - if the organization uses 2FA, this value might be "push" (e.g. Duo) or
-#           "pin" (Yubikey, Google Authenticator, TOTP)
-#       Whatever prompt responses are required to be entered when using openconnect
-#       manually should be defined in the variable PROMPT_RESPONSES below, with each
-#       response followed by \n:
-#         - PROMPT_RESPONSES="yes\n"
-#         - PROMPT_RESPONSES="yes\npush\n"
-
-# 4.) Override the following configuration variables, as needed, in file `config.gitignored`.
-#     This file is listed in `.gitignored` (thus the extension), which means it will not be
-#     tracked by `git`. This allows the script to be updated using `git fetch && git pull`
-#     without creating conflicts, and if you publicly fork the project, keeps your personal
-#     information (like URL and username) off the public git repo.
+# Default settings (overriden by settings.conf)
 VPN_EXECUTABLE=/usr/local/bin/openconnect
-VPN_HOST="none.example.invalid"
+VPN_HOST="vpn.example.invalid"
 VPN_USERNAME="anonymous"
 VPN_DISPLAYNAME="VPN"
 PROMPT_RESPONSES=""
 VPN_INTERFACE="utun99"
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-# END OF INSTRUCTIONS #
-#########################################################
 
 # Set absolute path to script (pedantic but works)
 PLUGINS_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 SCRIPT_PATH="$PLUGINS_DIR/$0"
 
-# Override the variables above
-CONFIG_FILE="$PLUGINS_DIR/openconnect-gui-menu-bar/config.gitignored"
+# Override the settings defaults
+CONFIG_FILE="$PLUGINS_DIR/openconnect-gui-menu-bar/settings.conf"
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
 # Retrieve that password securely at run time when connecting
@@ -94,6 +53,7 @@ GET_VPN_PASSWORD="security find-generic-password -wl $VPN_HOST"
 
 # Command to determine if VPN is connected or disconnected
 VPN_CONNECTED="/sbin/ifconfig | grep -A3 $VPN_INTERFACE | grep inet"
+
 # Command to run to disconnect VPN
 VPN_DISCONNECT_CMD="sudo killall -2 openconnect"
 

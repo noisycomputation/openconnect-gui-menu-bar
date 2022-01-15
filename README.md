@@ -1,86 +1,113 @@
-### OpenConnect - OS X/Mac OS GUI Menu Bar for connecting/disconnecting
+### OpenConnect - macOS GUI Menu Bar for connecting/disconnecting via OpenConnect
 
 # What is this?
 
-An easy way to get OpenConnect VPN to have an OS X/Mac OS Menu Bar GUI for:
-* quick connecting
-* quick disconnect
+An easy way to get OpenConnect VPN to have an macOS menu bar GUI for:
+* connecting
+* disconnecting
 * status changes (icon)
 
-Full support for multi-factor authentication (especially Duo)!
+Full(-ish) support for multi-factor authentication (especially Duo)!
 
-![OpenConnect Connected](https://github.com/ventz/openconnect-gui-menu-bar/blob/master/images/vpn-connected.png)
+![OpenConnect Connected](https://github.com/noisycomputation/openconnect-gui-menu-bar/blob/master/images/vpn-connected.png)
 
-![OpenConnect Disconnected](https://github.com/ventz/openconnect-gui-menu-bar/blob/master/images/vpn-disconnected.png)
+![OpenConnect Disconnected](https://github.com/noisycomputation/openconnect-gui-menu-bar/blob/master/images/vpn-disconnected.png)
 
 # How to run it:
 
-## 1. Get the latest BitBar release:
-https://github.com/matryer/bitbar/releases
+## 1. Install openconnect
 
-BitBar provides an easy way to put "things" (for output and input) in your OS X/Mac OS Menu Bar.
+If you have Homebrew, you can run `brew install openconnect`. Note that openconnect has
+supported the built-in utun device since 2014 and no longer requires installation
+of tun/tap drivers.
 
-Just unzip the release in your /Application folder and launch BitBar.
-It will ask you to create (or select) a folder to use for your scripts.
+## 2. Update your sudoers file to allow running/killing openconnect without a password
 
-Obviously make sure you have installed openconnect too :)
-`brew install openconnect`
-
-## 2. Edit the "openconnect.sh" and follow the steps inside to customize:
-
-Start by just getting the file itself:
-https://raw.githubusercontent.com/ventz/openconnect-gui-menu-bar/master/openconnect.sh
-
-Make sure you make it executable: `chmod 755 openconnect.sh` once you download it.
-
-This file is the "script" that interacts with BitBar. Place
-it in your bitbar scripts folder (I have chosen:
-~/Documents/bitbar-plugins/), and edit it/follow these steps:
-
-### First - Update your sudoers file with:
-
-You can create a `/etc/sudoers.d/openconnect` file which contains:
+Create the file `/etc/sudoers.d/openconnect-gui-menu-bar` by running
 ```
-mac-username ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect
-mac-username ALL=(ALL) NOPASSWD: /usr/bin/killall -2 openconnect
+    sudo visudo -f /etc/sudoers.d/openconnect-gui-menu-bar
+```
+Note that using visudo this is the only safe way to edit your sudoers file, because
+it will not let you save the file if it contains errors. If you use another method
+and inadvertently make a mistake, you will be unable to use sudo, which will make
+it tricky to fix the sudoers file.
+
+Add the following lines in the editor that opens, replacing `macos-username` with
+your Mac username. Choose only ONE of the two `openconnect` binaries in the first
+line: the first one is for Intel Macs, the second for Apple Silicon:
+```
+    macos-username ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect OR /opt/homebrew/openconnect
+    macos-username ALL=(ALL) NOPASSWD: /usr/bin/killall -2 openconnect
 ```
 
-Please note that `mac-username` is not a literal, but the actually the 'whoami' username for OS X/Mac OS.
+> Note: if the editor looks strange and you don't know how to operate it,
+> it is likely [vim](https://github.com/vim/vim). A learning opportunity has presented itself,
+> take advantage of it.
 
-### Second - Make sure your openconnect binary is here:
-```
-VPN_EXECUTABLE=/usr/local/bin/openconnect
-```
+## 3. Install xbar
+https://github.com/matryer/xbar
 
-### Third - add your VPN domain and VPN username and set Auth for "push" or "pin"
-```
-VPN_HOST="vpn.domain.tld"
-VPN_USERNAME="vpn_username@domain.tld#VPN_TUNNEL_OPTIONALLY"
+xbar provides an easy way to put "things" (for output and input) in your macOS menu bar.
 
-# Duo options include "push", "sms", or "phone"
-PUSH_OR_PIN="push"
-* or * 
-# To be prompted for TOTP input, use product name:
-PUSH_OR_PIN="Yubikey"
-or
-PUSH_OR_PIN="Google Authenticator"
-or
-PUSH_OR_PIN="Duo"
+## 4. Install this plugin into xbar's plugins directory
 
+Clone this repository into xbar's plugins directory and create a symlink
+in this directory pointing to the bash script `openconnect.sh` in this repo's root:
 ```
+    cd "~/Library/Application Support/xbar/plugins"
+    git clone https://github.com/noisycomputation/openconnect-gui-menu-bar.git
+    ln -s openconnect-gui-menu-bar/openconnect.sh
+```
+## 5. Configure the plugin
 
-### Finally, create your KeyChain password (to store your VPN password securely):
-```
-a.) Open "Keychain Access" and
-b.) Click on "login" keychain (top left corner)
-c.) Click on "Passwords" category (bottom left corner)
-d.) From the "File" menu, select -> "New Password Item..."
-e.) For "Keychain Item Name" and "Account Name" use the "VPN_HOST" and "VPN_USERNAME" values respectively from the "Third" step above.
-f.) For "Password" enter your VPN AnyConnect password.
-```
+Copy the file `settings.conf.example` to `settings.conf` in the repo's root and
+edit `settings.conf` to configure the plugin.
+
+Note that the repo's `.gitignore` file includes an entry for `settings.conf`,
+which means that git will ignore this file. This makes it possible to update
+the plugin with `git fetch && git pull` without creating a merge conflict. It
+also avoids sharing your configuration details with the world if you fork this
+repository on a public repo provider like Github.
+
+The `PROMPT_RESPONSES` variable is a rather crude hack that allows the openconnect
+script to be run non-interactively. Basically, any queries made by openconnect
+*other* than the VPN password query are handled by piping in a string that
+contains a response plus a newline (`\n`) for each query.
+
+To find out what values you need, first connect to your VPN manually by
+running `sudo openconnect -u {your VPN username} {VPN address}` and noting
+down all the answers to the questions openconnect asks you, other than
+your VPN password. The `PROMPT_RESPONSES` string should be a concatenation
+of all these answers, each followed by `\n`. If the answers are "yes",
+"no", and "push", the string should be "yes\nno\npush\n".
+
+For example, if a VPN server uses a self-signed certificate, the user is
+required to either accept it with "yes" or reject it before being prompted for the
+password. If this is the only pre-password query, the string would be `"yes\n"`.
+
+If the server uses 2FA, this value might be "push" (e.g. Duo) or "pin" (Yubikey,
+Google Authenticator, TOTP).
+
+## 6. Create your KeyChain password (to store your VPN password securely)
+
+  - Open "Keychain Access".
+  - Click on "login" keychain (top left corner).
+  - Click on "Passwords" tab.
+  - From the "File" menu, select -> "New Password Item..."
+  - For "Keychain Item Name" and "Account Name" use the
+    "VPN_HOST" and "VPN_USERNAME" values from `settings.conf`.
+  - For "Password" enter your VPN password.
 
 That's it! Now you can use the GUI to connect and disconnect!
 (and if you are using Duo - get the 2nd factor push to your phone)
+
+## 7. Run xbar
+
+Use your favorite way to run the xbar app (Finder, Spotlight, Launchpad). If it
+is already running, click on it and click on "Refresh all" to reload the plugin
+and re-process its configuration.
+
+You should see an icon in the menu bar!
 
 
 # Problems Connecting?
@@ -100,3 +127,6 @@ In order to make sure this doesn't happen - I've chosen 'utun99'
 
 # Help/Questions/Comments:
 For help or more info, feel free to contact me or open an issue here!
+
+> This helpful offer was in the upstream repo, but frankly I'm highly unlikely
+> to respond.
