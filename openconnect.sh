@@ -54,16 +54,23 @@ GET_VPN_PASSWORD="security find-generic-password -wl $VPN_HOST"
 
 # Command to determine if VPN is connected or disconnected
 VPN_CONNECTED="/sbin/ifconfig | grep -A3 $VPN_INTERFACE | grep inet"
+TUN_EXISTS="/sbin/ifconfig | grep -q $VPN_INTERFACE"
 
 # Command to run to disconnect VPN
 VPN_DISCONNECT_CMD="sudo killall -2 openconnect"
 
 case "$1" in
     connect)
+        # If tunnel exists, first dismantle it
+        if eval "$TUN_EXISTS"; then
+            eval "$VPN_DISCONNECT_CMD"
+            while eval "$TUN_EXISTS"; do sleep 1; done
+        fi
+
         VPN_PASSWORD=$(eval "$GET_VPN_PASSWORD")
         # Connect based on your 2FA selection (see: $PUSH_OR_PIN for options)
         # For anything else (non-duo) - you would provide your token (see: stoken)
-        echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" "$VPN_HOST" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "${EXTRA_ARGUMENTS[@]:+"${EXTRA_ARGUMENTS[@]}"}"
+        echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" "$VPN_HOST" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "${EXTRA_ARGUMENTS[@]:+"${EXTRA_ARGUMENTS[@]}"}" &> /tmp/aaa &
 
         # Wait for connection so menu item refreshes instantly
         until eval "$VPN_CONNECTED"; do sleep 1; done
@@ -71,7 +78,7 @@ case "$1" in
     disconnect)
         eval "$VPN_DISCONNECT_CMD"
         # Wait for disconnection so menu item refreshes instantly
-        until [ -z "$(eval "$VPN_CONNECTED")" ]; do sleep 1; done
+        while eval "$VPN_CONNECTED"; do sleep 1; done
         ;;
 esac
 
