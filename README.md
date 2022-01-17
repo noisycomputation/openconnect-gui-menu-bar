@@ -109,6 +109,31 @@ and re-process its configuration.
 
 You should see an icon in the menu bar!
 
+## 8. (Optional) Split Tunneling
+
+You can configure split tunnels (where only some traffic is sent via the VPN tunnel, as
+opposed to all or most of it) by using [vpn-slice](https://github.com/dlenski/vpn-slice). You
+can install vpn-slice via Homebrew with `brew install vpn-slice`.
+
+To use it, you must tell the openconnect binary to run the script by adding the argument
+`--script=` followed by the path to the vpn-slice binary (run `which vpn-slice` to get the
+path on your system), followed by arguments to the vpn-slice script where you define
+routes you would like to use. The entire string should be appended to the EXTRA_ARGUMENTS
+variable in `settings.conf`. Note that this variable is a bash array!
+
+The following example is valid on an Apple Silicon system:
+```
+    EXTRA_ARGUMENTS=( "--script=/opt/homebrew/bin/vpn-slice --no-ns-hosts --domains-vpn-dns=mycompany.com 10.0.34.0/24 10.0.35.0/24" )
+```
+Here is what the arguments mean:
+  - `no-ns-hosts`: do not add the VPN-server-provided DNS server(s) to `/etc/hosts` under aliases like `utun99.dns0`.
+  - `domains-vpn-dns`: use the VPN-server-provided DNS server(s) *only* to perform lookups on the `mycompany.com` domain (or whatever you specify), and use the system defined DNS configuration for all other queries.
+  - `10.0.34.0/24` etc.: specify subnets you want to route over the VPN.
+
+The configuration above, then, will route via the VPN traffic to all addresses on the 10.0.34.0/24 and 10.0.35.0/24 subnets; will use the VPN-provided DNS server(s) to lookup hosts on the `mycompany.com` domain; and will not add any aliases pointing to the VPN-provided DNS server(s) to my `/etc/hosts` file.
+
+See the `vpn-slice` documentation for more information.
+
 
 # Problems Connecting?
 
