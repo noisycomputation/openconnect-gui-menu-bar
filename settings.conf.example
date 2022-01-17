@@ -14,3 +14,9 @@ VPN_DISPLAYNAME="VPN"
 
 # Optional: change the default interface name.
 VPN_INTERFACE="utun99"
+
+# Optional: provide additional commandline argument(s) to openconnect in bash array.
+#           To provide NO arguments, the array must be empty. Examples:
+#           EXTRA_ARGUMENTS=( )  # No extra arguments
+#           EXTRA_ARGUMENTS=( "--servercert=pin-sha256:..." "--script=vpn-slice args" )
+EXTRA_ARGUMENTS=( )

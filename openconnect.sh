@@ -37,6 +37,7 @@ VPN_HOST="vpn.example.invalid"
 VPN_USERNAME="anonymous"
 VPN_DISPLAYNAME="VPN"
 PROMPT_RESPONSES=""
+EXTRA_ARGUMENTS=""
 VPN_INTERFACE="utun99"
 
 # Set absolute path to script (pedantic but works)
@@ -62,7 +63,7 @@ case "$1" in
         VPN_PASSWORD=$(eval "$GET_VPN_PASSWORD")
         # Connect based on your 2FA selection (see: $PUSH_OR_PIN for options)
         # For anything else (non-duo) - you would provide your token (see: stoken)
-        echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "$VPN_HOST" &> /dev/null &
+        echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" "$VPN_HOST" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "${EXTRA_ARGUMENTS[@]:+"${EXTRA_ARGUMENTS[@]}"}"
 
         # Wait for connection so menu item refreshes instantly
         until eval "$VPN_CONNECTED"; do sleep 1; done
@@ -77,15 +78,15 @@ esac
 if [ -n "$(eval "$VPN_CONNECTED")" ]; then
     echo "$VPN_DISPLAYNAME 🔒"
     echo '---'
-    echo "Disconnect VPN | bash='$SCRIPT_PATH' param1=disconnect terminal=false refresh=true"
+    echo "Disconnect VPN | shell='$SCRIPT_PATH' param1=disconnect terminal=false refresh=true"
     exit
 else
     echo "$VPN_DISPLAYNAME ❌"
     # Alternative icon -> but too similar to "connected"
     #echo "VPN 🔓"
     echo '---'
-    echo "Connect VPN | bash='$SCRIPT_PATH' param1=connect terminal=false refresh=true"
+    echo "Connect VPN | shell='$SCRIPT_PATH' param1=connect terminal=false refresh=true"
     # For debugging!
-    #echo "Connect VPN | bash='$SCRIPT_PATH' param1=connect terminal=true refresh=true"
+    #echo "Connect VPN | shell='$SCRIPT_PATH' param1=connect terminal=true refresh=true"
     exit
 fi
