@@ -1,7 +1,7 @@
 # Mandatory: Uncomment one of the following two lines, depending on whether you have an
 #            Intel or Apple Silicon Mac
-#VPN_EXECUTABLE=/opt/homebrew/bin/openconnect  # Intel Macs
-#VPN_EXECUTABLE=/usr/local/bin/openconnect  # Apple Silicon Macs
+#VPN_EXECUTABLE=/opt/homebrew/bin/openconnect  # Apple Silicon Macs
+#VPN_EXECUTABLE=/usr/local/bin/openconnect  # Intel Macs
 
 # Mandatory: Enter the URL or IP address of your VPN server, your username, and
 #            (optionally) provide pre-password prompt responses (see README.md)
@@ -14,6 +14,9 @@ VPN_DISPLAYNAME="VPN"
 
 # Optional: change the default interface name.
 VPN_INTERFACE="utun99"
+
+# Optional: change the default logfile
+LOGFILE="$HOME/Library/Logs/xbar-openconnect.log"
 
 # Optional: provide additional commandline argument(s) to openconnect in bash array.
 #           To provide NO arguments, the array must be empty. Examples:

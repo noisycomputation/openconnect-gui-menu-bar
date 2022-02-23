@@ -37,8 +37,9 @@ VPN_HOST="vpn.example.invalid"
 VPN_USERNAME="anonymous"
 VPN_DISPLAYNAME="VPN"
 PROMPT_RESPONSES=""
-EXTRA_ARGUMENTS=""
+EXTRA_ARGUMENTS=()
 VPN_INTERFACE="utun99"
+LOGFILE="$HOME/Library/Logs/xbar-openconnect.log"
 
 # Set absolute path to script (pedantic but works)
 PLUGINS_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -67,10 +68,22 @@ case "$1" in
             while eval "$TUN_EXISTS"; do sleep 1; done
         fi
 
+        if [ -n "$2" ] && [ "$2" = "log" ]; then
+            EXTRA_ARGUMENTS+=('--verbose')
+            OUTPUT="$LOGFILE"
+            echo -e "################ "$(date +"%Y-%m-%d %H:%M:%S")" ### CONFIG ################\n" >> "$OUTPUT"
+            cat "$CONFIG_FILE" >> "$OUTPUT"
+            echo -e "\n######################################## ENV    ################\n" >> "$OUTPUT"
+            ( set -o posix ; set ) >> "$OUTPUT"
+            echo -e "\n######################################## OUTPUT ################\n" >> "$OUTPUT"
+        else
+            OUTPUT="/tmp/xbar-openconnect.log"
+        fi
+
         VPN_PASSWORD=$(eval "$GET_VPN_PASSWORD")
         # Connect based on your 2FA selection (see: $PUSH_OR_PIN for options)
         # For anything else (non-duo) - you would provide your token (see: stoken)
-        echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" "$VPN_HOST" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "${EXTRA_ARGUMENTS[@]:+"${EXTRA_ARGUMENTS[@]}"}" &> /tmp/aaa &
+        echo -e "${PROMPT_RESPONSES}${VPN_PASSWORD}\n" | sudo "$VPN_EXECUTABLE" "$VPN_HOST" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "${EXTRA_ARGUMENTS[@]:+${EXTRA_ARGUMENTS[@]}}" >> "$OUTPUT" 2>&1 &
 
         # Wait for connection so menu item refreshes instantly
         until eval "$VPN_CONNECTED"; do sleep 1; done
@@ -93,6 +106,7 @@ else
     #echo "VPN 🔓"
     echo '---'
     echo "Connect VPN | shell='$SCRIPT_PATH' param1=connect terminal=false refresh=true"
+    echo "Connect VPN (with logging)| shell='$SCRIPT_PATH' param1=connect param2=log terminal=false refresh=true"
     # For debugging!
     #echo "Connect VPN | shell='$SCRIPT_PATH' param1=connect terminal=true refresh=true"
     exit
