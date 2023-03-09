@@ -37,13 +37,15 @@ VPN_HOST="vpn.example.invalid"
 VPN_USERNAME="anonymous"
 VPN_DISPLAYNAME="VPN"
 PROMPT_RESPONSES=""
-EXTRA_ARGUMENTS=()
 VPN_INTERFACE="utun99"
 LOGFILE="$HOME/Library/Logs/xbar-openconnect.log"
 
 # Set absolute path to script (pedantic but works)
 PLUGINS_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 SCRIPT_PATH="$PLUGINS_DIR/$0"
+
+# Default output to /tmp, but can be overriden with param2=log
+OUTPUT="/tmp/xbar-openconnect.log"
 
 # Override the settings defaults
 CONFIG_FILE="$PLUGINS_DIR/openconnect-gui-menu-bar/settings.conf"
@@ -68,7 +70,16 @@ case "$1" in
             while eval "$TUN_EXISTS"; do sleep 1; done
         fi
 
-        if [ -n "$2" ] && [ "$2" = "log" ]; then
+        # We expect param2 to be either "split" or "full", which chooses EXTRA_ARGS_SPLIT or
+        # EXTRA_ARGS_FULL, respectively, from the config file to be the array pointed to by
+        # EXTRA_ARGUMENTS. In reality we default to split and make full a special case.
+        if [ -n "$2" ] && [ "$2" = "full" ]; then
+            EXTRA_ARGUMENTS=("${EXTRA_ARGS_FULL[@]}")
+        else
+            EXTRA_ARGUMENTS=("${EXTRA_ARGS_SPLIT[@]}")
+        fi
+
+        if [ -n "$3" ] && [ "$3" = "log" ]; then
             EXTRA_ARGUMENTS+=('--verbose')
             OUTPUT="$LOGFILE"
             echo -e "################ "$(date +"%Y-%m-%d %H:%M:%S")" ### CONFIG ################\n" >> "$OUTPUT"
@@ -76,8 +87,6 @@ case "$1" in
             echo -e "\n######################################## ENV    ################\n" >> "$OUTPUT"
             ( set -o posix ; set ) >> "$OUTPUT"
             echo -e "\n######################################## OUTPUT ################\n" >> "$OUTPUT"
-        else
-            OUTPUT="/tmp/xbar-openconnect.log"
         fi
 
         VPN_PASSWORD=$(eval "$GET_VPN_PASSWORD")
@@ -105,8 +114,9 @@ else
     # Alternative icon -> but too similar to "connected"
     #echo "VPN 🔓"
     echo '---'
-    echo "Connect VPN | shell='$SCRIPT_PATH' param1=connect terminal=false refresh=true"
-    echo "Connect VPN (with logging)| shell='$SCRIPT_PATH' param1=connect param2=log terminal=false refresh=true"
+    echo "Connect VPN (split) | shell='$SCRIPT_PATH' param1=connect param2=split terminal=false refresh=true"
+    echo "Connect VPN (split, logging) | shell='$SCRIPT_PATH' param1=connect param2=split param3=log terminal=false refresh=true"
+    echo "Connect VPN (full) | shell='$SCRIPT_PATH' param1=connect param2=full terminal=false refresh=true"
     # For debugging!
     #echo "Connect VPN | shell='$SCRIPT_PATH' param1=connect terminal=true refresh=true"
     exit

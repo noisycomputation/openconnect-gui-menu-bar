@@ -20,6 +20,12 @@ LOGFILE="$HOME/Library/Logs/xbar-openconnect.log"
 
 # Optional: provide additional commandline argument(s) to openconnect in bash array.
 #           To provide NO arguments, the array must be empty. Examples:
-#           EXTRA_ARGUMENTS=( )  # No extra arguments
-#           EXTRA_ARGUMENTS=( "--servercert=pin-sha256:..." "--script=vpn-slice args" )
-EXTRA_ARGUMENTS=( )
+#           EXTRA_ARGS_SPLIT=( )  # No extra arguments
+#           EXTRA_ARGS_SPLIT=( "--servercert=pin-sha256:..." "--script=vpn-slice args" )
+# Argument notes:
+#  - servercert: used instead of passing in "y\n" as PROMPT_RESPONSE
+#  - -s 'vpn-slice ...': use to set up routes, hosts, DNS for split tunneling
+#  - EXTRA_ARGS_SPLIT is used by default, EXTRA_ARGS_FULL is used if param2 passed to
+#    script is "full".
+EXTRA_ARGS_SPLIT=( )
+EXTRA_ARGS_FULL=( )
