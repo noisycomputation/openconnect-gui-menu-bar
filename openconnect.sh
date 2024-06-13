@@ -31,6 +31,17 @@
 # <xbar.desc>Connect/Disconnect OpenConnect + show status</xbar.desc>
 # <xbar.image></xbar.image>
 
+# CLI debugging ONLY! Set this to true and invoke the script from a CLI according to
+# the following instructions. If this is 'true', xbar will not work!
+#    - open another terminal window and 'tail -f ~/Library/Logs/xbar-openconnect.log"
+#    - cd to ~/Library/Application Support/xbar/plugins
+#    - run './openconnect.sh connect full log' and watch the output
+#    - a common issue is that the server fingerprint doesn't match, because Nomad's
+#      sysadmin updated the certificates. When this happens, the log will print the
+#      server's certificate. Copy this into settings.conf/EXTRA_ARGS_SPLIT under the
+#      flag '--servercert'
+CLI_DEBUG=false  # prints verbose messages if debugging this script directly in CLI
+
 # Default settings (overriden by settings.conf)
 VPN_EXECUTABLE=/usr/local/bin/openconnect
 VPN_HOST="vpn.example.invalid"
@@ -51,6 +62,12 @@ OUTPUT="/tmp/xbar-openconnect.log"
 CONFIG_FILE="$PLUGINS_DIR/openconnect-gui-menu-bar/settings.conf"
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
+if [ "$CLI_DEBUG" = true ]; then
+    echo "config_file: $CONFIG_FILE"
+    echo "VPN_HOST: $VPN_HOST"
+    echo "VPN_USERNAME: $VPN_USERNAME"
+fi
+
 # Retrieve that password securely at run time when connecting
 # and feed it to openconnect. No storing passwords in the clear!
 GET_VPN_PASSWORD="security find-generic-password -wl $VPN_HOST"
@@ -66,8 +83,13 @@ case "$1" in
     connect)
         # If tunnel exists, first dismantle it
         if eval "$TUN_EXISTS"; then
+            [ "$CLI_DEBUG" = true ] && echo "Tunnel exists, disconnecting and waiting..."
             eval "$VPN_DISCONNECT_CMD"
-            while eval "$TUN_EXISTS"; do sleep 1; done
+            while eval "$TUN_EXISTS"; do
+                sleep 1
+                [ "$CLI_DEBUG" = true ] && echo "  still waiting..."
+            done
+            [ "$CLI_DEBUG" = true ] && echo "  old tunnel disconnected."
         fi
 
         # We expect param2 to be either "split" or "full", which chooses EXTRA_ARGS_SPLIT or
